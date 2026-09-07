@@ -1,0 +1,9 @@
+# Activate with: mvn spring-boot:run -Dspring-boot.run.profiles=local
+# Requires: docker-compose up -d (local Postgres) and COGNITO_ISSUER_URI /
+# COGNITO_APP_CLIENT_ID env vars pointing at a once-deployed FargateAuthStack
+# (see README "Local development").
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/items
+    username: items
+    password: items

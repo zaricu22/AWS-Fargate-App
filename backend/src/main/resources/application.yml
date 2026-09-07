@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: items-backend
+  datasource:
+    # AWS: set by the ECS task definition (infra/lib/backend-stack.ts) --
+    # url is built from the RDS instance endpoint, username/password come
+    # from the RDS-generated Secrets Manager secret (ecs.Secret.fromSecretsManager).
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+app:
+  cognito:
+    # AWS: set by the ECS task definition from FargateAuthStack's outputs -- see
+    # config/SecurityConfig.java for how these are used to validate JWTs.
+    issuer-uri: ${COGNITO_ISSUER_URI}
+    app-client-id: ${COGNITO_APP_CLIENT_ID}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

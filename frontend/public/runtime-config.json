@@ -1,0 +1,7 @@
+{
+  "cognitoUserPoolId": "eu-central-1_wY8QOAk4r",
+  "cognitoClientId": "5hc1ntle9mgielkomj0bjgfrv2",
+  "cognitoDomain": "https://items-fargate-app.auth.eu-central-1.amazoncognito.com",
+  "region": "eu-central-1",
+  "apiBaseUrl": "http://localhost:8080/api"
+}

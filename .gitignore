@@ -1,0 +1,51 @@
+# --- Backend (Maven / Spring Boot) ---
+backend/target/
+backend/dependency-reduced-pom.xml
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- Frontend (Angular) ---
+frontend/dist/
+frontend/.angular/
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# --- Infra (AWS CDK) ---
+infra/cdk.out/
+infra/**/*.d.ts
+infra/**/*.js
+!infra/jest.config.js
+
+# --- E2E (Playwright) ---
+e2e/.env
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+
+# --- Secrets / local env ---
+.env
+.env.local
+*.pem
+*.key
+
+# --- IDEs and editors ---
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+
+/frontend/.vscode/extensions.json
+/frontend/.vscode/launch.json
+/frontend/.vscode/tasks.json

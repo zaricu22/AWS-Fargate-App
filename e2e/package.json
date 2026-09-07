@@ -1,0 +1,12 @@
+{
+  "name": "aws-fargate-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --env-file=.env node_modules/@playwright/test/cli.js test",
+    "test:headed": "node --env-file=.env node_modules/@playwright/test/cli.js test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}
