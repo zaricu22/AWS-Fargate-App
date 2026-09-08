@@ -1,0 +1,31 @@
+<div class="login-page">
+  <h1>Log in</h1>
+
+  <!-- Default login path: custom Angular form, calls Cognito directly. -->
+  <form (ngSubmit)="submit()">
+    <label>
+      Email
+      <input type="email" name="email" [(ngModel)]="email" required autocomplete="username" />
+    </label>
+    <label>
+      Password
+      <input
+        type="password"
+        name="password"
+        [(ngModel)]="password"
+        required
+        autocomplete="current-password"
+      />
+    </label>
+    <button type="submit" [disabled]="submitting()">Log in</button>
+  </form>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  <hr />
+
+  <!-- Secondary login path: Cognito Hosted UI with PKCE. -->
+  <button type="button" (click)="loginWithHostedUi()">Sign in with Hosted UI</button>
+</div>

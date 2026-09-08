@@ -5,7 +5,7 @@ import { AuthService } from '../../core/auth.service';
 @Component({
   selector: 'app-hosted-ui-callback',
   standalone: true,
-  template: `<p>{{ error() ?? 'Signing you in…' }}</p>`,
+  templateUrl: './hosted-ui-callback.component.html',
 })
 export class HostedUiCallbackComponent implements OnInit {
   private authService = inject(AuthService);
