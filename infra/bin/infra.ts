@@ -13,19 +13,13 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
-// Cognito needs the CloudFront callback/logout URLs, but the CloudFront
-// domain isn't known until FrontendStack deploys once. Workflow: deploy
-// everything first (localhost callback only), read FrontendStack's SiteUrl
-// output, then re-run `cdk deploy FargateAuthStack` with these env vars set
-// so the Hosted UI path also works against the deployed site. See README.
+// Cognito needs the CloudFront callback/logout URLs,
+// but the CloudFront domain isn't known until FrontendStack deploys once.
+// Workflow: deploy everything first (localhost callback only), read FrontendStack's SiteUrl output,
+// then re-run `cdk deploy FargateAuthStack` with these env vars set so the Hosted UI path also works against the deployed site.
 const cloudFrontCallbackUrl = process.env.CLOUDFRONT_CALLBACK_URL;
 const cloudFrontLogoutUrl = process.env.CLOUDFRONT_LOGOUT_URL;
 
-// Stack ids are prefixed 'Fargate' (rather than plain 'AuthStack' etc.)
-// because CloudFormation stacks are identified by name within an
-// account+region, not by which local CDK app synthesized them -- deploying
-// this app with the sibling Lambda sample's stack names into the same
-// account/region would update/collide with THAT sample's stacks.
 const authStack = new AuthStack(app, 'FargateAuthStack', {
   env,
   cognitoDomainPrefix: process.env.COGNITO_DOMAIN_PREFIX ?? 'items-fargate-app',

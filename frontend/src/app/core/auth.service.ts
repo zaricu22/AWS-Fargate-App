@@ -12,11 +12,6 @@ interface StoredTokens {
 const STORAGE_KEY = 'items_app_tokens';
 const PKCE_VERIFIER_KEY = 'items_app_pkce_verifier';
 
-/**
- * Sole owner of auth/token state. Both login paths below funnel through
- * storeTokens() into the same shape, so the guard and items page are
- * indifferent to which path the user logged in with.
- */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private config = inject(ConfigService);
@@ -32,10 +27,10 @@ export class AuthService {
   }
 
   /**
-   * AWS: default login path. Calls Cognito's InitiateAuth API directly over
-   * HTTPS (no AWS SDK) -- USER_PASSWORD_AUTH sends the password straight to
-   * Cognito's own endpoint, which then returns access/id/refresh tokens.
-   */
+   * AWS: first (default) login path.
+   * Calls Cognito's InitiateAuth API [USER_PASSWORD_AUTH, ClientId (global, Cognito App), USERNAME, PASSWORD] directly over HTTPS (no AWS SDK), 
+   * which then returns AuthenticationResult [AccessToken/IdToken/RefreshToken/ExpiresIn].
+  */
   async loginWithPassword(email: string, password: string): Promise<void> {
     const { cognitoClientId, region } = this.config.get();
 
@@ -71,11 +66,13 @@ export class AuthService {
   }
 
   /**
-   * AWS: secondary login path. Redirects to Cognito's Hosted UI
-   * (<cognitoDomain>/oauth2/authorize) using Authorization Code + PKCE.
+   * AWS: secondary login path. 
+   * Redirects to Cognito's Hosted UI (<cognitoDomain>/oauth2/authorize) using Authorization Code + PKCE.
    */
   async startHostedUiLogin(): Promise<void> {
+    // Cognito's runtime config details
     const { cognitoDomain, cognitoClientId } = this.config.get();
+    // PKCE
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
@@ -92,7 +89,11 @@ export class AuthService {
     window.location.href = `${cognitoDomain}/oauth2/authorize?${params.toString()}`;
   }
 
-  /** AWS: exchanges the Hosted UI's authorization code at Cognito's <cognitoDomain>/oauth2/token endpoint. */
+  /** 
+   * AWS: When Cognito's Hosted UI submitted, it redirects back to /callback (our app route) with an authorization code.
+   *    CallbackURLs and LogoutURLs are configured in Cognito's App Client settings during AWS CDK deployment (see infra/lib/frontend-stack.ts).
+   * To finish the login process, we exchange the authorization code for tokens (AccessToken/IdToken/RefreshToken/ExpiresIn) by calling Cognito's /oauth2/token endpoint.
+  */ 
   async handleHostedUiCallback(code: string): Promise<void> {
     const { cognitoDomain, cognitoClientId } = this.config.get();
     const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
@@ -127,15 +128,14 @@ export class AuthService {
     });
   }
 
-  logout(): void {
-    sessionStorage.removeItem(STORAGE_KEY);
-    this.tokens.set(null);
-  }
-
   private redirectUri(): string {
     return `${window.location.origin}/callback`;
   }
 
+  /* 
+   * Login credentials: interface StoredTokens above (send with every request to backend API)
+   * Both login paths works through storeTokens() into the same shape, so the guard and items page are indifferent to which path the user logged in with.
+   */
   private storeTokens(tokens: StoredTokens): void {
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
     this.tokens.set(tokens);
@@ -144,5 +144,10 @@ export class AuthService {
   private readStoredTokens(): StoredTokens | null {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as StoredTokens) : null;
+  }
+
+  logout(): void {
+    sessionStorage.removeItem(STORAGE_KEY);
+    this.tokens.set(null);
   }
 }

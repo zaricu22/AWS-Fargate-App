@@ -15,6 +15,7 @@ export interface BackendStackProps extends cdk.StackProps {
 }
 
 export class BackendStack extends cdk.Stack {
+  // Used by Infra app entry when deploying and wiring props and deps between other stacks.
   public readonly service: ecsPatterns.ApplicationLoadBalancedFargateService;
 
   constructor(scope: Construct, id: string, props: BackendStackProps) {
@@ -22,10 +23,9 @@ export class BackendStack extends cdk.Stack {
 
     const cluster = new ecs.Cluster(this, 'Cluster', { vpc: props.vpc });
 
-    // Tasks sit in PUBLIC subnets (no NAT gateway exists — see DataStack).
-    // The task security group only allows inbound from the ALB's security
-    // group (wired automatically by this L3 construct), so this is not
-    // meaningfully less secure than a private subnet + NAT for a sample.
+    // Backend Service as Fargate Stateless Container with ALB (App Load Balancer):
+    // Tasks sit in PUBLIC subnets of VPC (Virtual Private Cloud)
+    // (can access/be accessed to/from internet, less secure, no need for NAT gateway - only private subnet)
     this.service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, 'BackendService', {
       cluster,
       cpu: 256,
@@ -35,6 +35,7 @@ export class BackendStack extends cdk.Stack {
       assignPublicIp: true,
       publicLoadBalancer: true,
       healthCheckGracePeriod: cdk.Duration.seconds(150),
+      // 'docker build' local Dockerfile with db env variables
       taskImageOptions: {
         image: ecs.ContainerImage.fromAsset('../backend'),
         containerPort: 8080,
@@ -50,17 +51,13 @@ export class BackendStack extends cdk.Stack {
       },
     });
 
+    // Configured in SpringBoot's application.yml
     this.service.targetGroup.configureHealthCheck({
       path: '/actuator/health',
     });
 
-    // dbInstance.connections.allowDefaultPortFrom(...) would add the ingress
-    // rule to the DB's security group, which lives in DataStack, and that
-    // rule would reference this stack's service SG -- creating a DataStack
-    // -> BackendStack reference that cycles with BackendStack's existing
-    // dependency on DataStack. Importing the DB's SG *into this stack* (as
-    // mutable) keeps the new rule -- and the only cross-stack dependency --
-    // in this stack instead.
+    // Re-import (not allowDefaultPortFrom) so the ingress rule is created here,
+    // not in DataStack -- avoids a DataStack -> BackendStack cycle.
     const dbSecurityGroup = ec2.SecurityGroup.fromSecurityGroupId(
       this,
       'ImportedDbSecurityGroup',
@@ -72,6 +69,7 @@ export class BackendStack extends cdk.Stack {
       ec2.Port.tcp(5432),
     );
 
+    // If you execute stacks directly with cdk deploy, you can see these outputs in the console (like info return messages).
     new cdk.CfnOutput(this, 'BackendUrl', {
       value: `http://${this.service.loadBalancer.loadBalancerDnsName}`,
     });

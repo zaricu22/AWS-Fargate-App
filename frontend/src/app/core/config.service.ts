@@ -18,6 +18,9 @@ export class ConfigService {
   private config?: RuntimeConfig;
 
   async load(): Promise<void> {
+    /*
+      AWS: Frontend's S3Bucket - "SiteBucket" - interface RuntimeConfig above
+    */
     const response = await fetch('/runtime-config.json');
     if (!response.ok) {
       throw new Error(`Failed to load runtime-config.json: ${response.status}`);
@@ -25,6 +28,7 @@ export class ConfigService {
     this.config = (await response.json()) as RuntimeConfig;
   }
 
+  // used by ItemService, AuthService, and AuthInterceptor, to get the runtime configs
   get(): RuntimeConfig {
     if (!this.config) {
       throw new Error('ConfigService.load() must complete before use');

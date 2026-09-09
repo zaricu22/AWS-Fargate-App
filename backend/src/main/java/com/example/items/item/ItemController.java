@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+// AWS: Spring Boot's Backend API (CloudFront -> ALB -> Fargate)
 @RestController
 @RequestMapping("/api/items")
 public class ItemController {

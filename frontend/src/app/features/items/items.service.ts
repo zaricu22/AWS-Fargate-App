@@ -10,9 +10,10 @@ export class ItemsService {
   private config = inject(ConfigService);
 
   getItems(): Observable<Item[]> {
-    // AWS: reaches Spring Boot's GET /api/items through CloudFront -> ALB ->
-    // Fargate in production; authInterceptor attaches the Cognito bearer
-    // token, and SecurityConfig on the backend validates it.
+    /* 
+     * AWS: fetches items from Spring Boot's GET /api/items through CloudFront -> ALB -> Fargate in production; 
+     * authInterceptor attaches the Cognito bearer token, and SecurityConfig on the backend validates it.
+     */
     return this.http.get<Item[]>(`${this.config.get().apiBaseUrl}/items`);
   }
 }

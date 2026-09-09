@@ -19,6 +19,7 @@ export class LoginComponent {
   submitting = signal(false);
   error = signal<string | null>(null);
 
+  // AWS: default login path. Calls Cognito's InitiateAuth API directly over HTTPS.
   async submit(): Promise<void> {
     this.submitting.set(true);
     this.error.set(null);
@@ -32,6 +33,7 @@ export class LoginComponent {
     }
   }
 
+  // AWS: secondary login path. Redirects to Cognito's Hosted UI (<cognitoDomain>/oauth2/authorize) using Authorization Code + PKCE.
   async loginWithHostedUi(): Promise<void> {
     await this.authService.startHostedUiLogin();
   }

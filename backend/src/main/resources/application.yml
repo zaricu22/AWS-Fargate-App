@@ -5,9 +5,7 @@ spring:
   application:
     name: items-backend
   datasource:
-    # AWS: set by the ECS task definition (infra/lib/backend-stack.ts) --
-    # url is built from the RDS instance endpoint, username/password come
-    # from the RDS-generated Secrets Manager secret (ecs.Secret.fromSecretsManager).
+    # AWS: sourced by Data-Stack and set by Backend-Stack in ECS+Fargate task definition.
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
@@ -20,11 +18,12 @@ spring:
 
 app:
   cognito:
-    # AWS: set by the ECS task definition from FargateAuthStack's outputs -- see
-    # config/SecurityConfig.java for how these are used to validate JWTs.
+    # AWS: sourced by Auth-Stack and set by Backend-Stack in ECS+Fargate task definition,
+    # see config/SecurityConfig.java for how these are used to validate JWTs.
     issuer-uri: ${COGNITO_ISSUER_URI}
     app-client-id: ${COGNITO_APP_CLIENT_ID}
 
+# AWS: /actuator/health probe endpoint for ECS health check (wired in Backend-Stack).
 management:
   endpoints:
     web:

@@ -18,7 +18,11 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
+    // issuerUri ← app.cognito.issuer-uri ← ${COGNITO_ISSUER_URI} (application.yml)
+    //  ← COGNITO_ISSUER_URI env-var on ECS task (backend-stack) ← props.issuerUri ← AuthStack.issuerUri
     private final String issuerUri;
+    // appClientId ← app.cognito.app-client-id ← ${COGNITO_APP_CLIENT_ID} (application.yml)
+    //  ← COGNITO_APP_CLIENT_ID env-var on ECS task (backend-stack) ← props.userPoolClient.userPoolClientId ← AuthStack.appClientId
     private final String appClientId;
 
     public SecurityConfig(
@@ -38,11 +42,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
+                // Wire custom Jwt decoder for Cognito JWT token validation
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder)));
 
         return http.build();
     }
 
+    // Define custom JWT decoder for Cognito JWT token validation
     @Bean
     public JwtDecoder jwtDecoder() {
         // AWS: withIssuerLocation fetches Cognito's public signing keys (JWKS)
@@ -50,8 +56,11 @@ public class SecurityConfig {
         // startup, then verifies each incoming token's signature against them.
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withIssuerLocation(issuerUri).build();
 
+        // Define custom validators for issuerUri
         OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuerUri);
+        // Use custom defined CognitoClientIdValidator
         OAuth2TokenValidator<Jwt> withClientId = new CognitoClientIdValidator(appClientId);
+        // Wire two custom validators to the decoder
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(withIssuer, withClientId));
 
         return decoder;

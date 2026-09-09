@@ -19,6 +19,10 @@ export class ItemsComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
 
+  /* 
+   * AWS: fetches items from Spring Boot's GET /api/items through CloudFront -> ALB -> Fargate in production; 
+   * authInterceptor attaches the Cognito bearer token, and SecurityConfig on the backend validates it.
+  */
   ngOnInit(): void {
     this.itemsService.getItems().subscribe({
       next: (items) => {
@@ -32,6 +36,7 @@ export class ItemsComponent implements OnInit {
     });
   }
 
+  // Remove the user's tokens and redirect to the login page. The guard will then redirect to the login page if the user is not authenticated.
   logout(): void {
     this.authService.logout();
     this.router.navigateByUrl('/login');

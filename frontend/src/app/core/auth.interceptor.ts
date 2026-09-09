@@ -3,9 +3,10 @@ import { inject } from '@angular/core';
 import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
 
-// AWS: apiBaseUrl is '/api' in production, which CloudFront routes to the
-// ALB -> Fargate -> Spring Boot (see infra/lib/frontend-stack.ts's '/api/*'
-// behavior) -- same origin as the SPA, so no CORS is needed there.
+/* 
+ * AWS: Attaches the Cognito bearer token with every request to Spring Boot's Backend API (CloudFront -> ALB -> Fargate), 
+ * and SecurityConfig on the backend validates it.
+*/
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const config = inject(ConfigService);
   const authService = inject(AuthService);

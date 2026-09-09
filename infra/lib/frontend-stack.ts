@@ -24,17 +24,19 @@ export class FrontendStack extends cdk.Stack {
       autoDeleteObjects: true,
     });
 
+    // AWS's CDN (CloudFront): public HTTPS endpoint browsers actually hit — it does not serve files itself;
+    // it's a routing/caching layer that pulls content from one or more origins
+    // (S3 buckets, ALBs HTTP servers, etc.) and caches/serves it to users.
+    // Because Frontend Bucket and Backend ALB is under same Distribution, there is no CORS policy needed.
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
+      // Frontend Bucket route:
       defaultRootObject: 'index.html',
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(siteBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
       },
-      // Routes /api/* to the ALB through the SAME distribution, so the
-      // Angular app's API calls are same-origin -> no CORS needed in prod.
-      // CloudFront->ALB hop is plain HTTP (no ACM cert for this sample);
-      // the public-facing hop is still HTTPS via CloudFront.
+      // Backend ALB route:
       additionalBehaviors: {
         '/api/*': {
           origin: new origins.HttpOrigin(props.loadBalancer.loadBalancerDnsName, {
@@ -46,8 +48,9 @@ export class FrontendStack extends cdk.Stack {
           allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         },
       },
-      // SPA deep-link/refresh fix: unknown paths (client-side routes) fall
-      // back to index.html instead of a raw S3 404.
+      // SiteS3Bucket doesn't allow public or direct access to its containing resources,
+      // also S3/CloudFront doesn't know anything about Angular's routes,
+      // so in case of violation we should transfer raw S3 404 to index.html.
       errorResponses: [
         { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
         { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
@@ -56,8 +59,9 @@ export class FrontendStack extends cdk.Stack {
 
     const cognitoDomain = `https://${props.userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`;
 
-    // Written directly from CDK-known values so redeploying infra alone
-    // (without an `ng build`) still reaches the frontend on next page load.
+    // Deploy to SiteS3Bucket generated on the fly during cdk synth/deploy
+    // Configurate 'runtime-config.json' written directly from CDK-known values (than used by frontend pages),
+    // so redeploying infra-stack alone is still valid on next page load (no need for new `ng build`) .
     new s3deploy.BucketDeployment(this, 'DeployRuntimeConfig', {
       sources: [
         s3deploy.Source.jsonData('runtime-config.json', {
@@ -75,8 +79,8 @@ export class FrontendStack extends cdk.Stack {
       prune: false,
     });
 
-    // Hashed JS/CSS bundles: long cache, safe because Angular's build hashes
-    // filenames on every change.
+    // Deploy to SiteS3Bucket from local build directory
+    // .js/.css bundles: can be long cached, safe because Angular's build hashes filenames on every change.
     new s3deploy.BucketDeployment(this, 'DeploySiteAssets', {
       sources: [s3deploy.Source.asset('../frontend/dist/frontend/browser')],
       destinationBucket: siteBucket,
@@ -85,7 +89,8 @@ export class FrontendStack extends cdk.Stack {
       prune: false,
     });
 
-    // index.html: no-cache, so a new deploy is picked up immediately.
+    // Deploy to SiteS3Bucket from local build directory
+    // index.html: no-cache, impossible because always same name,so a new deploy is picked up immediately.
     new s3deploy.BucketDeployment(this, 'DeployIndexHtml', {
       sources: [s3deploy.Source.asset('../frontend/dist/frontend/browser', { exclude: ['*', '!index.html'] })],
       destinationBucket: siteBucket,
@@ -95,6 +100,7 @@ export class FrontendStack extends cdk.Stack {
       prune: false,
     });
 
+    // If you execute stacks directly with cdk deploy, you can see these outputs in the console (like info return messages).
     new cdk.CfnOutput(this, 'SiteUrl', { value: `https://${distribution.distributionDomainName}` });
   }
 }

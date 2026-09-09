@@ -1,0 +1,70 @@
+# Reference/learning compose file — builds and runs Postgres + backend + frontend
+# together as containers. Not part of the documented local dev loop in CLAUDE.md
+# (that's the root `docker-compose.yml` for Postgres only, then `mvn spring-boot:run` /
+# `npm start` directly). Run this one explicitly from the repo root:
+#
+#   docker compose -f docker-samples/docker-compose.yml up --build
+#
+# Build contexts point back at the repo root (".."), since the backend/frontend
+# Dockerfiles here need access to the real backend/ and frontend/ source trees.
+#
+# Needs COGNITO_ISSUER_URI / COGNITO_APP_CLIENT_ID in the environment or a
+# .env file next to this one (same vars the local Spring profile needs).
+
+name: aws-fargate-app-advanced
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: items
+      POSTGRES_USER: items
+      POSTGRES_PASSWORD: items
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U items"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [app-net]
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker-samples/backend/Dockerfile
+      args:
+        APP_VERSION: local
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/items
+      SPRING_DATASOURCE_USERNAME: items
+      SPRING_DATASOURCE_PASSWORD: items
+      COGNITO_ISSUER_URI: ${COGNITO_ISSUER_URI}
+      COGNITO_APP_CLIENT_ID: ${COGNITO_APP_CLIENT_ID}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [app-net]
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker-samples/frontend/Dockerfile
+    ports:
+      - "4200:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks: [app-net]
+
+volumes:
+  postgres-data:
+
+networks:
+  app-net:

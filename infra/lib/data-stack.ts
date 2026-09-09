@@ -4,15 +4,19 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 
 export class DataStack extends cdk.Stack {
+  // Used by Infra app entry when deploying and wiring props and deps between other stacks.
   public readonly vpc: ec2.Vpc;
   public readonly dbInstance: rds.DatabaseInstance;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // No NAT gateway: Fargate tasks run in the public subnets instead (see
-    // BackendStack) so there is no need to pay for a NAT just to reach
-    // ECR/Cognito. RDS stays fully private in the isolated subnet group.
+    // Define VPC (Virtual Private Cloud) with public (Fargate Service) and isolated (RDS) subnets, no NAT gateways.
+    // VPC: Everything that needs networking — the RDS database, the ECS Fargate tasks, the ALB — has to live inside some VPC.
+    // It's the foundational network boundary for the whole app.
+    // NAT gateway: managed AWS resource you can add to VPC's public subnet, whose only job is:
+    // let things in a private subnet make outbound internet connections (pull a Docker image, call an external API)
+    // without being reachable from the internet themselves. It's not a network of its own.
     this.vpc = new ec2.Vpc(this, 'Vpc', {
       maxAzs: 2,
       natGateways: 0,
@@ -22,6 +26,8 @@ export class DataStack extends cdk.Stack {
       ],
     });
 
+    // Create RDS (Relational Database Service) PostgreSQL instance in isolated subnet, not publicly accessible.
+    // Prepared DB seed data is loaded by SpringBoot's Flyway migration.
     this.dbInstance = new rds.DatabaseInstance(this, 'Database', {
       engine: rds.DatabaseInstanceEngine.postgres({
         version: rds.PostgresEngineVersion.VER_16_4,

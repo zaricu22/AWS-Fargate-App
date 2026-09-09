@@ -1,4 +1,20 @@
-# Angular + Spring Boot + AWS CDK Sample
+# Angular + Spring Boot + RDS + AWS CDK Sample (Fargate+RDS+VPC+ALB)
+
+## Implemented cloud concepts
+
+- **S3** — both `FrontendStack`s (`siteBucket`, blocked public access + OAC)
+- **CDN/Edge caching** — CloudFront in both, with S3 + backend (ALB vs HTTP API) as dual origins, `CACHING_OPTIMIZED` vs `CACHING_DISABLED`
+- **Lambda** — `AWS-Lambda-App/infra/lib/backend-stack.ts` (Java 17, ARM_64/Graviton)
+- **EC2 / Fargate contrast** — this repo's `ApplicationLoadBalancedFargateService` (Fargate, no EC2 management) vs Lambda's zero-server model
+- **RDS** — this repo's `DataStack` (Postgres, isolated subnet, Secrets Manager-generated creds)
+- **DynamoDB** — Lambda app's `DataStack` (PAY_PER_REQUEST, no VPC needed — fully managed over public API)
+- **VPC** — this repo only (public+isolated subnets, no NAT); Lambda app has none, illustrating that DynamoDB doesn't need a VPC
+- **ALB** — this repo (`ApplicationLoadBalancedFargateService`)
+- **API Gateway** — Lambda app (`HttpApi` + Cognito JWT authorizer at the gateway, contrasted against this repo's in-app `SecurityConfig` check)
+- **IAM / Zero-Trust identity** — Cognito User Pools + JWT auth in both; scoped grants (`grantReadData`, custom-resource policy) in Lambda app
+- **Secrets Management** — this repo (`ecs.Secret.fromSecretsManager` for DB creds)
+- **Custom silicon (Graviton)** — both: `BURSTABLE4_GRAVITON` RDS instance here, `Architecture.ARM_64` Lambda there
+- **CDK as IaC** (imperative, TS, compiles to CloudFormation) — the entire `infra/` of both
 
 A minimal reference system with exactly two features: **login** and a **read-only items list** pulled from Postgres.
 See `infra/`, `backend/`, `frontend/` for the three pieces, and the design rationale in the plan this was built from.
@@ -103,6 +119,11 @@ Fargate was chosen here so a normal long-running Spring Boot process (same JDBC 
   - A task that's still starting up, crashed, or failing its health check gets excluded automatically until it recovers.
 - **ECS** — runs one or more service tasks (each an instance of the container) that come and go as they scale, redeploy, or get replaced after a health-check failure.
   - Task IPs aren't stable, so the ALB is what gives clients one address that keeps working regardless of what's happening behind it.
+
+### CORS: needed locally, not in production
+
+- **Production**: CloudFront fronts both the frontend (S3) and backend (`/api/*` routed to the ALB) as behaviors on one distribution (`frontend-stack.ts`) — to the browser it's a single origin, so no CORS preflight ever happens. `CorsConfig.java` documents this explicitly.
+- **Local dev**: the frontend (`localhost:4200`) and backend (`localhost:8080`) *are* different origins, so CORS is genuinely needed there — but only under the `local` Spring profile (`CorsConfig`, `@Profile("local")`). See `CLAUDE.md`'s "Backend CORS" section for a filter-chain-ordering gotcha this hit (a standalone `CorsFilter` bean runs after Spring Security's chain, so it must instead be wired in as a `CorsConfigurationSource` via `SecurityConfig`'s `.cors(...)`).
 
 ### Why Fargate + RDS, and what's actually different from the AWS-Lambda-App sample
 
@@ -275,6 +296,20 @@ aws cognito-idp admin-set-user-password \
    npm start
    ```
    Visit `http://localhost:4200`, log in with the demo user via either path, and confirm the items list loads.
+
+### Optional: full containerized stack (`docker-samples/`)
+
+`docker-samples/` is a reference-only sample, not part of the setup above and not wired into `infra/` or CDK in any way. It's an alternative to running the database, backend, and frontend as three separate local processes (steps 1–3 above): one `docker compose up` builds and runs all three together. It also demonstrates common Dockerfile/Compose concepts (multi-stage builds, BuildKit cache mounts, non-root users, `HEALTHCHECK`, etc.):
+
+- `docker-samples/backend/Dockerfile` — an alternate to `backend/Dockerfile` (the one CDK's `ContainerImage.fromAsset('../backend')` actually builds and deploys to Fargate). Same runtime output, more concepts demonstrated.
+- `docker-samples/frontend/Dockerfile` + `nginx.conf` — containerizes the Angular app behind nginx. The real deployed frontend is a static S3 + CloudFront site (`FargateFrontendStack`), never a container — this is purely illustrative of the alternative.
+- `docker-samples/docker-compose.yml` — builds and runs Postgres + both images together. Build contexts point back at the repo root, since the sample Dockerfiles need the real `backend/`/`frontend/` source trees.
+
+To run it (from the repo root, with `COGNITO_ISSUER_URI`/`COGNITO_APP_CLIENT_ID` set as in step 2 above):
+
+```bash
+docker compose -f docker-samples/docker-compose.yml up --build
+```
 
 ### Database migrations (Flyway)
 
