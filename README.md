@@ -53,6 +53,30 @@ The general shift this project follows: from manual web-console clicking to vers
 This project sits in the bottom-right cell: AWS CDK, cloud-native and imperative.
 See "Why use CDK" below for what that trade-off actually buys you.
 
+#### How IaC tools actually deploy
+
+None of the three tools compiles to anything that runs inside the cloud.
+Each one works out the list of resources you want and then has the cloud's API create them.
+The difference is *who* makes those API calls:
+
+- **Terraform / Pulumi** (client-side): your machine calls each service API directly (`s3:CreateBucket`, `ecs:CreateService`, ...) and tracks the result in a state file.
+- **AWS CDK** (server-side): `cdk synth` produces a CloudFormation template (`infra/cdk.out/`), and `cdk deploy` uploads it and calls only the CloudFormation API.
+  - The CloudFormation service then calls the individual service APIs from inside AWS, keeps the state in the stack, and rolls back automatically on failure.
+
+#### What "multi-cloud" actually means
+
+"Multi-cloud" means one tool and one workflow with many providers.
+It does not mean one piece of code that runs on every cloud.
+A provider is a plugin that knows one cloud's API, and resources stay cloud-specific (Terraform's `aws_s3_bucket` vs `google_storage_bucket`).
+
+#### Is there a universal, Liquibase-style layer?
+
+Mostly no, and the reason is useful to know.
+Liquibase works because SQL databases share one concept (tables, columns, indexes), so `createTable` can be translated into each dialect (database engine).
+Cloud services don't line up like that.
+AWS IAM and GCP IAM work differently, and so do VPCs, and Fargate vs. Cloud Run vs. Azure Container Apps.
+The closest portable layers are Kubernetes (portable runtime), Crossplane or your own modules (one interface over per-cloud implementations), and Dapr (app-level APIs). Each one costs you some cloud-specific features.
+
 ## Architecture
 
 - **infra/** — AWS CDK (TypeScript), 4 stacks: `FargateAuthStack` (Cognito), `FargateDataStack` (VPC + RDS Postgres), `FargateBackendStack` (ECS+Fargate behind an ALB), `FargateFrontendStack` (S3 + CloudFront).
