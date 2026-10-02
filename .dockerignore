@@ -1,0 +1,32 @@
+# Applies to docker-samples/ builds specifically — both its backend and
+# frontend Dockerfiles use the repo root as their build context (see
+# docker-samples/docker-compose.yml). backend/.dockerignore and
+# frontend/.dockerignore cover their own directories as build contexts,
+# which this doesn't replace.
+
+backend/target/
+backend/dependency-reduced-pom.xml
+frontend/dist/
+frontend/.angular/
+**/node_modules/
+
+infra/cdk.out/
+infra/**/*.d.ts
+infra/**/*.js
+!infra/jest.config.js
+
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+
+.git/
+**/.idea/
+**/.vscode/
+*.sublime-workspace
+
+.DS_Store
+Thumbs.db
+*.log
+*.class
+*.jar
+!backend/.mvn/wrapper/maven-wrapper.jar

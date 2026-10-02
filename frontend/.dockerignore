@@ -1,0 +1,19 @@
+# Note: no real Dockerfile currently builds with frontend/ as its context
+# (docker-samples/frontend/Dockerfile uses the repo root as context — see
+# the root .dockerignore for what that build actually respects). This file
+# covers frontend/ as a build context in case one is ever added directly.
+
+dist/
+.angular/
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+.git/
+.idea/
+.vscode/
+*.sublime-workspace
+
+.DS_Store
+Thumbs.db
+*.log

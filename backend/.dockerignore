@@ -1,0 +1,17 @@
+# Applies to the build context Docker actually uses for backend/Dockerfile
+# (CDK's ContainerImage.fromAsset('../backend') builds this dir directly).
+
+target/
+dependency-reduced-pom.xml
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+.git/
+.idea/
+.vscode/
+*.sublime-workspace
+
+.DS_Store
+Thumbs.db
+*.log
